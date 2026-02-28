@@ -1,0 +1,422 @@
+1. /src/app/App.tsx
+import { RouterProvider } from "react-router";
+import { router } from "./routes";
+
+export default function App() {
+  return <RouterProvider router={router} />;
+}
+2. /src/app/routes.ts
+import { createBrowserRouter } from "react-router";
+import { Home } from "./pages/Home";
+import { Transmit } from "./pages/Transmit";
+import { Transmitting } from "./pages/Transmitting";
+import { Receive } from "./pages/Receive";
+
+export const router = createBrowserRouter([
+  {
+    path: "/",
+    Component: Home,
+  },
+  {
+    path: "/transmit",
+    Component: Transmit,
+  },
+  {
+    path: "/transmitting",
+    Component: Transmitting,
+  },
+  {
+    path: "/receive",
+    Component: Receive,
+  },
+]);
+3. /src/app/pages/Home.tsx
+import { useNavigate } from "react-router";
+import { Send, Radio } from "lucide-react";
+
+export function Home() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#2c5f7a] via-[#3a6f8a] to-[#5ba3a8] flex flex-col items-center justify-center p-6">
+      {/* Logo */}
+      <div className="mb-16">
+        <div className="flex items-center gap-3 text-white">
+          <svg width="60" height="40" viewBox="0 0 60 40" fill="none">
+            <path d="M20 20L8 28L8 12L20 20Z M20 20L32 12L32 28L20 20Z" fill="currentColor" opacity="0.5"/>
+            <circle cx="12" cy="16" r="2" fill="white"/>
+            <circle cx="16" cy="20" r="2" fill="white"/>
+            <circle cx="12" cy="24" r="2" fill="white"/>
+            <circle cx="20" cy="20" r="2" fill="white"/>
+            <circle cx="24" cy="16" r="2" fill="white"/>
+            <circle cx="28" cy="20" r="2" fill="white"/>
+            <circle cx="24" cy="24" r="2" fill="white"/>
+          </svg>
+          <h1 className="text-4xl font-light tracking-wide">AquaComm</h1>
+        </div>
+      </div>
+
+      {/* Cards */}
+      <div className="w-full max-w-md space-y-6">
+        {/* Send Card */}
+        <button
+          onClick={() => navigate("/transmit")}
+          className="w-full bg-[#1e3a4f]/60 backdrop-blur-sm rounded-2xl p-8 border border-[#3a5f74]/50 hover:bg-[#1e3a4f]/70 transition-all duration-300 hover:scale-[1.02]"
+        >
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-20 h-20 rounded-full bg-[#4a8fa8] flex items-center justify-center">
+              <Send className="w-10 h-10 text-white" strokeWidth={2} />
+            </div>
+            <div className="text-center">
+              <h2 className="text-3xl font-semibold text-white mb-1">SEND</h2>
+              <p className="text-[#b8d4e0] text-lg">Transmit signal</p>
+            </div>
+          </div>
+        </button>
+
+        {/* Receive Card */}
+        <button
+          onClick={() => navigate("/receive")}
+          className="w-full bg-[#1e3a4f]/60 backdrop-blur-sm rounded-2xl p-8 border border-[#3a5f74]/50 hover:bg-[#1e3a4f]/70 transition-all duration-300 hover:scale-[1.02]"
+        >
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-20 h-20 rounded-full bg-[#4a9d7a] flex items-center justify-center">
+              <Radio className="w-10 h-10 text-white" strokeWidth={2} />
+            </div>
+            <div className="text-center">
+              <h2 className="text-3xl font-semibold text-white mb-1">RECEIVE</h2>
+              <p className="text-[#b8d4e0] text-lg">Detect signal</p>
+            </div>
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+4. /src/app/pages/Transmit.tsx
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import { ArrowLeft, Send, Waves, Info } from "lucide-react";
+
+export function Transmit() {
+  const navigate = useNavigate();
+  const [message, setMessage] = useState("");
+
+  const handleTransmit = () => {
+    if (message.trim()) {
+      navigate("/transmitting", { state: { message } });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#2c5f7a] via-[#3a6f8a] to-[#5ba3a8] flex flex-col p-6">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <button
+          onClick={() => navigate("/")}
+          className="w-12 h-12 rounded-full bg-[#466b81] hover:bg-[#537789] transition-colors flex items-center justify-center"
+        >
+          <ArrowLeft className="w-6 h-6 text-white" />
+        </button>
+        <h1 className="text-2xl font-semibold text-white">Transmit Signal</h1>
+      </div>
+
+      {/* Wave Icon */}
+      <div className="flex justify-center mb-12">
+        <Waves className="w-16 h-16 text-[#6cb4c9]" strokeWidth={2} />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col max-w-md mx-auto w-full">
+        <div className="space-y-6">
+          {/* Message Input */}
+          <div>
+            <label className="block text-[#b8d4e0] mb-3 text-sm">Message to transmit</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="w-full bg-[#1a2e3d] border border-[#2d4a5c] rounded-xl p-4 text-white placeholder-[#5a7283] focus:outline-none focus:border-[#4a8fa8] min-h-[160px] resize-none"
+              placeholder="Enter your message..."
+            />
+          </div>
+
+          {/* Signal Info */}
+          <div className="bg-[#1a2e3d]/80 border border-[#2d4a5c] rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-[#6cb4c9] flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-white font-medium mb-1">Signal Info</h3>
+                <p className="text-[#8fa8b8] text-sm">
+                  Your message will be converted to light pulses and transmitted via flashlight
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="mt-auto pt-8 flex gap-4">
+          <button
+            onClick={() => navigate("/")}
+            className="flex-1 bg-[#2d4a5c] hover:bg-[#364e61] text-white py-4 rounded-xl transition-colors text-lg font-medium"
+          >
+            Back
+          </button>
+          <button
+            onClick={handleTransmit}
+            disabled={!message.trim()}
+            className="flex-1 bg-[#4fb8d4] hover:bg-[#5ac5e0] text-[#1a2e3d] py-4 rounded-xl transition-colors text-lg font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Send className="w-5 h-5" />
+            Transmit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+5. /src/app/pages/Transmitting.tsx
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router";
+import { ArrowLeft, Waves } from "lucide-react";
+import { motion } from "motion/react";
+
+export function Transmitting() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const message = location.state?.message || "";
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (!message) {
+      navigate("/transmit");
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 1;
+      });
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [message, navigate]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#2c5f7a] via-[#3a6f8a] to-[#5ba3a8] flex flex-col p-6">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <button
+          onClick={() => navigate("/")}
+          className="w-12 h-12 rounded-full bg-[#466b81] hover:bg-[#537789] transition-colors flex items-center justify-center"
+        >
+          <ArrowLeft className="w-6 h-6 text-white" />
+        </button>
+        <h1 className="text-2xl font-semibold text-white">Transmit Signal</h1>
+      </div>
+
+      {/* Wave Icon */}
+      <div className="flex justify-center mb-12">
+        <Waves className="w-16 h-16 text-[#6cb4c9]" strokeWidth={2} />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full">
+        {/* Pulsing Light Animation */}
+        <div className="relative mb-12">
+          <motion.div
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-[#f0d86f] to-[#e8c84f]"
+            animate={{
+              scale: [1, 1.5, 1],
+              opacity: [0.3, 0.1, 0.3],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            style={{ width: "200px", height: "200px" }}
+          />
+          <motion.div
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-[#f5e89d] to-[#f0d86f] blur-xl"
+            animate={{
+              scale: [1, 1.3, 1],
+              opacity: [0.4, 0.2, 0.4],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.3,
+            }}
+            style={{ width: "200px", height: "200px" }}
+          />
+          <motion.div
+            className="relative rounded-full bg-gradient-to-br from-[#f5e89d] via-[#f0d86f] to-[#d4b948] shadow-2xl shadow-[#f0d86f]/50"
+            animate={{
+              scale: [1, 1.05, 1],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            style={{ width: "200px", height: "200px" }}
+          >
+            <div className="absolute inset-8 rounded-full bg-gradient-to-br from-[#fef7c8] to-[#f5e89d]" />
+            <div className="absolute inset-16 rounded-full bg-gradient-to-br from-[#fffdf0] to-[#fef7c8]" />
+          </motion.div>
+        </div>
+
+        {/* Text */}
+        <h2 className="text-3xl font-semibold text-white mb-3">Transmitting...</h2>
+        <p className="text-[#b8d4e0] text-lg mb-8">Converting to light pulses</p>
+
+        {/* Progress Bar */}
+        <div className="w-full max-w-sm mb-8">
+          <div className="h-2 bg-[#2d4a5c] rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-[#4fb8d4] via-[#7ec9dc] to-[#f0d86f]"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+        </div>
+
+        {/* Help Button */}
+        <button className="bg-[#2d4a5c] hover:bg-[#364e61] text-[#b8d4e0] px-6 py-3 rounded-xl transition-colors">
+          "help "
+        </button>
+      </div>
+    </div>
+  );
+}
+6. /src/app/pages/Receive.tsx
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import { ArrowLeft, Camera, Waves } from "lucide-react";
+import { motion } from "motion/react";
+
+export function Receive() {
+  const navigate = useNavigate();
+  const [isReceiving, setIsReceiving] = useState(false);
+  const [decodedMessage, setDecodedMessage] = useState("");
+
+  const handleStartCamera = () => {
+    setIsReceiving(true);
+    // Simulate receiving a message after 3 seconds
+    setTimeout(() => {
+      setDecodedMessage("HACKENZA");
+    }, 3000);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#2c5f7a] via-[#3a6f8a] to-[#5ba3a8] flex flex-col p-6">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <button
+          onClick={() => navigate("/")}
+          className="w-12 h-12 rounded-full bg-[#466b81] hover:bg-[#537789] transition-colors flex items-center justify-center"
+        >
+          <ArrowLeft className="w-6 h-6 text-white" />
+        </button>
+        <h1 className="text-2xl font-semibold text-white">Receive Signal</h1>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col max-w-md mx-auto w-full">
+        {/* Camera Area */}
+        <div className="bg-[#0f1d27] rounded-3xl p-12 border-2 border-[#1a3f52] mb-6 flex-1 flex flex-col items-center justify-center">
+          {/* Camera Icon with Glow */}
+          <motion.div
+            className="relative mb-8"
+            animate={{
+              scale: isReceiving ? [1, 1.1, 1] : 1,
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: isReceiving ? Infinity : 0,
+              ease: "easeInOut",
+            }}
+          >
+            <motion.div
+              className="absolute inset-0 rounded-full bg-[#4a9d7a] blur-2xl"
+              animate={{
+                opacity: isReceiving ? [0.3, 0.6, 0.3] : 0.4,
+              }}
+              transition={{
+                duration: 1.5,
+                repeat: isReceiving ? Infinity : 0,
+                ease: "easeInOut",
+              }}
+              style={{ width: "120px", height: "120px", left: "-10px", top: "-10px" }}
+            />
+            <div className="relative w-24 h-24 rounded-full bg-[#4a9d7a] flex items-center justify-center">
+              <Camera className="w-12 h-12 text-white" strokeWidth={2} />
+            </div>
+          </motion.div>
+
+          {/* Text */}
+          <h2 className="text-2xl font-semibold text-white mb-3 text-center">
+            Point Camera at Signal
+          </h2>
+          <p className="text-[#8fa8b8] text-center mb-8 leading-relaxed">
+            Align your camera with the flashlight transmitter to receive and decode the message
+          </p>
+
+          {/* Start Camera Button */}
+          {!isReceiving && (
+            <button
+              onClick={handleStartCamera}
+              className="bg-[#4a9d7a] hover:bg-[#58b08e] text-white px-8 py-4 rounded-2xl transition-colors flex items-center gap-3 text-lg font-medium"
+            >
+              <Camera className="w-6 h-6" />
+              Start Camera
+            </button>
+          )}
+
+          {isReceiving && !decodedMessage && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-[#6cb4c9] text-lg"
+            >
+              Scanning for signal...
+            </motion.div>
+          )}
+
+          {/* Wave Icon */}
+          <div className="mt-8">
+            <Waves className="w-12 h-12 text-[#2d4a5c]" strokeWidth={2} />
+          </div>
+        </div>
+
+        {/* Decoded Message */}
+        <div className="bg-[#1a2e3d]/80 border border-[#2d4a5c] rounded-xl p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-2 h-2 rounded-full bg-[#6cb4c9] flex-shrink-0 mt-2" />
+            <div className="flex-1">
+              <h3 className="text-white font-medium mb-2">Decoded Message</h3>
+              {decodedMessage ? (
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-[#6cb4c9] text-lg font-semibold"
+                >
+                  {decodedMessage}
+                </motion.p>
+              ) : (
+                <p className="text-[#5a7283] italic">Waiting for signal transmission...</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
