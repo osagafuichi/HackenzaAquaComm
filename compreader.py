@@ -20,8 +20,8 @@ ROI_SIZE = 30
 IDLE_TIMEOUT_MULT = 7
 TRACK_SMOOTH = 0.7
 
-MIN_DOT_TIME = 0.8   # 🔥 prevents early false lock
-MAX_DOT_TIME = 1.2   # 🔥 keeps timing sane
+MIN_DOT_TIME = 0.8   # prevents early false lock
+MAX_DOT_TIME = 1.2   # keeps timing sane
 
 # ===============================
 # FIND BRIGHTEST GRID CELL
@@ -46,11 +46,11 @@ def find_brightest_cell(gray, cell_size):
 cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
 
 if not cap.isOpened():
-    print("❌ Camera failed to open")
+    print("Camera failed to open")
     exit()
 
 print("Receiver running... (auto-track mode)")
-print("⚙️  Dot ≈ 1 sec, Dash ≈ 3 sec")
+print("Dot ≈ 1 sec, Dash ≈ 3 sec")
 
 light_on = False
 last_change_time = time.time()
@@ -134,7 +134,7 @@ while True:
         if not light_on:
 
             if dot_time is None:
-                # 🔥 prevent early bad lock
+                # prevent early bad lock
                 if duration < MIN_DOT_TIME:
                     continue
 
