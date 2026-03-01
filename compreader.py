@@ -2,7 +2,18 @@ import cv2
 import numpy as np
 import time
 
-# Morse map
+# ===============================
+# DETECTION SETTINGS
+# ===============================
+STD_MULTIPLIER = 2.0
+MIN_AREA = 300
+STATE_STABLE_TIME = 0.15
+
+# ===============================
+# MORSE SETTINGS (RATIO BASED)
+# ===============================
+IDLE_TIMEOUT_MULT = 7
+
 MORSE_DECODE = {
     '.-':'A','-...':'B','-.-.':'C','-..':'D',
     '.':'E','..-.':'F','--.':'G','....':'H',
@@ -13,185 +24,135 @@ MORSE_DECODE = {
     '-.--':'Y','--..':'Z'
 }
 
-# ===============================
-# PARAMETERS (TUNED FOR 1s DOT)
-# ===============================
-ROI_SIZE = 30
-IDLE_TIMEOUT_MULT = 7
-TRACK_SMOOTH = 0.7
-
-MIN_DOT_TIME = 0.8   # prevents early false lock
-MAX_DOT_TIME = 1.2   # keeps timing sane
-
-# ===============================
-# FIND BRIGHTEST GRID CELL
-# ===============================
-def find_brightest_cell(gray, cell_size):
-    h, w = gray.shape
-    best_val = -1
-    best_coords = (0, 0)
-
-    for y in range(0, h - cell_size, cell_size):
-        for x in range(0, w - cell_size, cell_size):
-            cell = gray[y:y+cell_size, x:x+cell_size]
-            mean_val = np.mean(cell)
-
-            if mean_val > best_val:
-                best_val = mean_val
-                best_coords = (x, y)
-
-    return best_coords, best_val
-
-
-cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
-
+cap = cv2.VideoCapture(0)
 if not cap.isOpened():
-    print("Camera failed to open")
+    print("Camera failed")
     exit()
 
-print("Receiver running... (auto-track mode)")
-print("Dot ≈ 1 sec, Dash ≈ 3 sec")
+print("Receiver running (energy-weighted tracking)")
+print("Press ESC to quit")
 
 light_on = False
 last_change_time = time.time()
-light_on_start = None
-
-current_symbol = ""
-current_word = ""
+state_candidate_time = time.time()
 
 dot_time = None
-brightness_avg = None
-tracked_pos = None
+current_symbol = ""
+current_word = ""
 
 while True:
     ret, frame = cap.read()
     if not ret:
-        break
+        continue
 
     now = time.time()
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (7,7), 0)
+    gray = cv2.GaussianBlur(gray, (5,5), 0)
+
+    mean_val = np.mean(gray)
+    std_val = np.std(gray)
+    dynamic_thresh = mean_val + STD_MULTIPLIER * std_val
+
+    _, thresh = cv2.threshold(gray, dynamic_thresh, 255, cv2.THRESH_BINARY)
+
+    kernel = np.ones((3,3), np.uint8)
+    thresh = cv2.erode(thresh, kernel, iterations=1)
+    thresh = cv2.dilate(thresh, kernel, iterations=2)
+
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # ===============================
-    # AUTO LIGHT TRACKING
+    # ENERGY-WEIGHTED BLOB SELECTION
     # ===============================
-    (best_x, best_y), _ = find_brightest_cell(gray, ROI_SIZE)
+    best_blob = None
+    best_score = 0
 
-    if tracked_pos is None:
-        tracked_pos = (best_x, best_y)
-    else:
-        tx, ty = tracked_pos
-        tx = int(TRACK_SMOOTH * tx + (1 - TRACK_SMOOTH) * best_x)
-        ty = int(TRACK_SMOOTH * ty + (1 - TRACK_SMOOTH) * best_y)
-        tracked_pos = (tx, ty)
-
-    x1, y1 = tracked_pos
-    x2 = x1 + ROI_SIZE
-    y2 = y1 + ROI_SIZE
-
-    roi = gray[y1:y2, x1:x2]
-    brightness = float(np.mean(roi))
-
-    # ===============================
-    # SMOOTH BRIGHTNESS
-    # ===============================
-    if brightness_avg is None:
-        brightness_avg = brightness
-    else:
-        brightness_avg = 0.92 * brightness_avg + 0.08 * brightness
-
-    thresh_on = brightness_avg + 30
-    thresh_off = brightness_avg + 8
-
-    prev_light = light_on
-
-    # ===============================
-    # HYSTERESIS LIGHT DETECTION
-    # ===============================
-    if not light_on and brightness > thresh_on:
-        light_on = True
-        light_on_start = now
-
-    elif light_on:
-        min_on_time = (dot_time * 0.6) if dot_time else 0.4
-
-        if brightness < thresh_off and (now - light_on_start) > min_on_time:
-            light_on = False
-
-    # ===============================
-    # EDGE TIMING
-    # ===============================
-    if light_on != prev_light:
-        duration = now - last_change_time
-        last_change_time = now
-
-        # ignore flicker
-        if dot_time is not None and duration < dot_time * 0.45:
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area < MIN_AREA:
             continue
 
-        # ----- pulse ended -----
-        if not light_on:
+        mask = np.zeros(gray.shape, dtype=np.uint8)
+        cv2.drawContours(mask, [cnt], -1, 255, -1)
 
-            if dot_time is None:
-                # prevent early bad lock
-                if duration < MIN_DOT_TIME:
-                    continue
+        mean_intensity = cv2.mean(gray, mask=mask)[0]
+        score = area * mean_intensity
 
-                dot_time = duration
-                print(f"[LOCKED] dot_time ≈ {dot_time:.2f}s")
+        if score > best_score:
+            best_score = score
+            best_blob = cnt
 
-            else:
-                if duration < dot_time * 1.35:
-                    dot_time = 0.97 * dot_time + 0.03 * duration
-                    dot_time = max(MIN_DOT_TIME, min(dot_time, MAX_DOT_TIME))
+    detected = False
 
-            ratio = duration / dot_time
-
-            if ratio < 1.9:
-                current_symbol += '.'
-            else:
-                current_symbol += '-'
-
-        # ----- gap ended -----
-        else:
-            if dot_time is not None:
-                letter_gap = dot_time * 3
-                word_gap = dot_time * 7
-
-                if duration > letter_gap:
-                    if current_symbol:
-                        letter = MORSE_DECODE.get(current_symbol, '?')
-                        current_word += letter
-                        print("Decoded:", current_word)
-                        current_symbol = ""
-
-                if duration > word_gap:
-                    if current_word:
-                        print("Word complete:", current_word)
-                        current_word = ""
+    if best_blob is not None:
+        x,y,w,h = cv2.boundingRect(best_blob)
+        cv2.rectangle(frame, (x,y), (x+w,y+h), (0,255,0), 2)
+        detected = True
 
     # ===============================
-    # IDLE WORD FLUSH
+    # DEBOUNCE FILTER
+    # ===============================
+    if detected != light_on:
+        if now - state_candidate_time > STATE_STABLE_TIME:
+            prev_light = light_on
+            light_on = detected
+            duration = now - last_change_time
+            last_change_time = now
+
+            # ===============================
+            # MORSE TIMING
+            # ===============================
+            if not light_on:
+
+                if dot_time is None:
+                    if 0.5 < duration < 1.5:
+                        dot_time = duration
+                        print(f"[LOCKED] dot_time ≈ {dot_time:.2f}s")
+                    else:
+                        print("Rejected first pulse:", round(duration,2))
+                    continue
+
+                ratio = duration / dot_time
+
+                if 0.6 <= ratio <= 1.6:
+                    current_symbol += '.'
+                    print("DOT")
+                elif 2.0 <= ratio <= 4.0:
+                    current_symbol += '-'
+                    print("DASH")
+                else:
+                    print("Ignored pulse:", round(duration,2))
+
+            else:
+                if dot_time is not None:
+                    if duration > dot_time * 3:
+                        if current_symbol:
+                            letter = MORSE_DECODE.get(current_symbol, '?')
+                            current_word += letter
+                            print("Decoded:", current_word)
+                            current_symbol = ""
+
+    else:
+        state_candidate_time = now
+
+    # ===============================
+    # IDLE FLUSH
     # ===============================
     if not light_on and dot_time is not None:
         idle_time = now - last_change_time
-
         if idle_time > dot_time * IDLE_TIMEOUT_MULT:
             if current_symbol:
                 letter = MORSE_DECODE.get(current_symbol, '?')
                 current_word += letter
                 current_symbol = ""
-
             if current_word:
                 print("Word complete:", current_word)
                 current_word = ""
-
             last_change_time = now
 
-    # draw tracking box
-    cv2.rectangle(frame,(x1,y1),(x2,y2),(0,255,0),2)
     cv2.imshow("Receiver", frame)
+    cv2.imshow("Threshold", thresh)
 
     if cv2.waitKey(1) == 27:
         break
