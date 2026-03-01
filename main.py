@@ -151,9 +151,6 @@ while True:
                 current_word = ""
             last_change_time = now
 
-    cv2.imshow("Receiver", frame)
-    cv2.imshow("Threshold", thresh)
-
     if cv2.waitKey(1) == 27:
         break
 
